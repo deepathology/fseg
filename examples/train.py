@@ -4,7 +4,7 @@
 # SBATCH --output slurm.%j.out
 
 from dataset import Dataset
-from dff_seg import DFFSeg, show_segmentation_on_image
+from dff_seg.dff_seg import DFFSeg, show_segmentation_on_image
 import numpy as np
 from PIL import Image
 from pytorch_grad_cam.utils.image import preprocess_image
@@ -17,7 +17,6 @@ import time
 import json
 import sys
 import tqdm
-sys.path.append("/home/gildenbj/dev/dff_seg")
 
 
 def uni_model_transform(tensor, width, height):
