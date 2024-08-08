@@ -9,9 +9,6 @@ from huggingface_hub import login
 from dff_seg import DFFSeg, show_segmentation_on_image
 
 
-NUM_CONCEPTS = 20
-
-
 def uni_model_transform(tensor, width, height):
     result = torch.nn.ReLU()(tensor[:, 1:, :].reshape(tensor.size(0),
                             height,
@@ -24,10 +21,10 @@ def uni_model_transform(tensor, width, height):
     return result
 
 
+NUM_CONCEPTS = 20
 img_path = r"D:\BCSSDataset\images\TCGA-A1-A0SP-DX1_xmin6798_ymin53719_MAG-10.00.png"
 img = np.array(Image.open(img_path))
 img = img[:16*(img.shape[0] // 16), :16*(img.shape[1] // 16), :]
-# img = img[:256, :256, :]
 rgb_img_float = np.float32(img) / 255
 input_tensor = preprocess_image(rgb_img_float,
                                 mean=[0.485, 0.456, 0.406],
@@ -36,10 +33,6 @@ img_path2 = r"D:\BCSSDataset\images\TCGA-A2-A0CM-DX1_xmin18562_ymin56852_MAG-10.
 img2 = np.array(Image.open(img_path2))
 img2 = img[:16*(img2.shape[0] // 16), :16*(img2.shape[1] // 16), :]
 rgb_img_float2 = np.float32(img2) / 255
-input_tensor2 = preprocess_image(rgb_img_float2,
-                                mean=[0.485, 0.456, 0.406],
-                                std=[0.229, 0.224, 0.225])
-
 model_name = "uni"
 
 if model_name == "resnet":
@@ -67,7 +60,6 @@ unsupervised_seg = DFFSeg(
 )
 
 input_tensor = input_tensor.cuda()
-input_tensor2 = input_tensor2.cuda()
 unsupervised_seg.fit(input_tensor)
 segmentation = unsupervised_seg.predict(input_tensor=input_tensor)
 unsupervised_seg.crf_smoothing = True
@@ -87,4 +79,3 @@ visualization2 = show_segmentation_on_image(
     image_weight=0.7,
     n_categories=NUM_CONCEPTS,
 )
-# display(Image.fromarray(np.hstack((visualization, visualization2))))

@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from pytorch_grad_cam.activations_and_gradients import ActivationsAndGradients
 import torch
 import denseCRF
-from sklearn.decomposition import NMF, non_negative_factorization
+from sklearn.decomposition import NMF, non_negative_factorization, MiniBatchNMF
 from PIL import Image
 
 
@@ -23,7 +23,7 @@ def show_segmentation_on_image(
 
     :param img: The base image in RGB format.
     :param segmentation: A numpy array with category indices per pixel.
-    :param colors: List of R, G, B colors to be used for the components. 
+    :param colors: List of R, G, B colors to be used for the components.
                    If None, will use the gist_rainbow colormap as a default.
     :param n_categories: Number of categories in the segmentation.
     :param image_weight: The final result is image_weight * img + (1-image_weight) * visualization.
@@ -93,7 +93,7 @@ def densecrf(
     :return: A numpy array of shape [H, W], where pixel values represent class indices.
 
     """
-    out = denseCRF.densecrf(I, P, params) 
+    out = denseCRF.densecrf(I, P, params)
     return out
 
 
@@ -120,7 +120,7 @@ def densecrf_on_image(
     :return: A numpy array of shape [H, W], where pixel values represent class indices.
 
     """
-    I  = image
+    I = image
     Iq = np.asarray(I)
     prob = prob / prob.sum(axis=-1)[:, :, None]
 
@@ -128,7 +128,6 @@ def densecrf_on_image(
     lab = densecrf(Iq, prob, param)
     lab = np.array(Image.fromarray(lab))
     return lab
-
 
 
 class DFFSeg:
@@ -149,6 +148,7 @@ class DFFSeg:
     :param it: Iteration number for CRF, defaults to 5.
 
     """
+
     def __init__(
             self,
             model,
@@ -177,6 +177,9 @@ class DFFSeg:
         self.gamma = gamma
         self.it = it
 
+        self.activations_and_grads = ActivationsAndGradients(
+            self.model, [self.target_layer], self.reshape_transform)
+
     def fit_predict(self, input_tensor: torch.tensor) -> np.ndarray:
         """
         Fit the model on the input tensor and predict the segmentation.
@@ -196,17 +199,14 @@ class DFFSeg:
         :return: The predicted segmentation as a numpy array.
 
         """
-        activations_and_grads = ActivationsAndGradients(
-                    self.model, [self.target_layer], self.reshape_transform)
-
         with torch.no_grad():
-            activations_and_grads(input_tensor)
-            activations = activations_and_grads.activations[0].cpu(
+            self.activations_and_grads(input_tensor)
+            activations = self.activations_and_grads.activations[0].cpu(
             ).numpy()
 
         activations = activations[0].transpose((1, 2, 0))
         vector = activations.reshape(-1, activations.shape[-1])
-        
+
         w, __, __ = non_negative_factorization(
             X=vector,
             H=self.concepts.transpose(),
@@ -218,17 +218,53 @@ class DFFSeg:
         )
 
         w = w.reshape((activations.shape[0], activations.shape[1], -1))
-        w_for_resize = torch.tensor(w.transpose((2,0,1))[None, :, :, :])  # Add batch dimension
+        w_for_resize = torch.tensor(
+            w.transpose(
+                (2, 0, 1))[
+                None, :, :, :])  # Add batch dimension
         size = (input_tensor.shape[2], input_tensor.shape[3])
-        w_resized = torch.nn.functional.interpolate(w_for_resize, size, mode='bilinear')[0].numpy().transpose((1, 2, 0))
-        
+        w_resized = torch.nn.functional.interpolate(w_for_resize, size, mode='bilinear')[
+            0].numpy().transpose((1, 2, 0))
+
         if self.crf_smoothing:
-            segmentation = densecrf_on_image(np.uint8(input_tensor[0].cpu().numpy()).transpose(1,2,0), w_resized)
+            segmentation = densecrf_on_image(
+                np.uint8(
+                    input_tensor[0].cpu().numpy()).transpose(
+                    1, 2, 0), w_resized)
         else:
             w_resized = w_resized.argmax(axis=-1)
-            segmentation = np.array(Image.fromarray(np.uint8(w_resized)).resize((input_tensor.shape[3], input_tensor.shape[2])))
+            segmentation = np.array(
+                Image.fromarray(
+                    np.uint8(w_resized)).resize(
+                    (input_tensor.shape[3], input_tensor.shape[2])))
         return segmentation
-        
+
+    def partial_fit(self, input_tensor: torch.tensor) -> None:
+        activations = self.get_activations(input_tensor)
+        batch_size, __, h, w = activations.shape
+        reshaped_activations = activations.transpose((1, 0, 2, 3))
+        reshaped_activations[np.isnan(reshaped_activations)] = 0
+        reshaped_activations = reshaped_activations.reshape(
+            reshaped_activations.shape[0], -1)
+        reshaped_activations = reshaped_activations
+        try:
+            _ = self.nmf_model
+            print("re-using model")
+        except BaseException:
+            self.nmf_model = MiniBatchNMF(
+                n_components=self.n_concepts,
+                init='random',
+                random_state=self.random_state)
+            print("init mininbatch model")
+
+        self.nmf_model.partial_fit(reshaped_activations)
+        self.concepts = self.nmf_model.components_
+
+    def get_activations(self, input_tensor: torch.tensor) -> np.ndarray:
+        with torch.no_grad():
+            self.activations_and_grads(input_tensor)
+            return self.activations_and_grads.activations[0].cpu().numpy()
+
     def fit(self, input_tensor: torch.tensor) -> None:
         """
         Fit the model on the input tensor to compute the concepts.
@@ -236,15 +272,5 @@ class DFFSeg:
         :param input_tensor: The input tensor.
 
         """
-        activations_and_grads = ActivationsAndGradients(
-                    self.model, [self.target_layer], self.reshape_transform)
-
-        with torch.no_grad():
-            activations_and_grads(input_tensor)
-            activations = activations_and_grads.activations[0].cpu().numpy()
-            concepts, __ = dff(activations, self.n_concepts)
-
-        self.concepts = concepts
-
-
-
+        activations = self.get_activations(input_tensor)
+        self.concepts, __ = dff(activations, self.n_concepts)
