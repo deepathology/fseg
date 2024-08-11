@@ -3,7 +3,6 @@
 # SBATCH --error slurm.%j.err
 # SBATCH --output slurm.%j.out
 
-from dataset import Dataset
 from dff_seg.dff_seg import DFFSeg, show_segmentation_on_image
 import numpy as np
 from PIL import Image
@@ -17,6 +16,31 @@ import time
 import json
 import sys
 import tqdm
+from torchvision import transforms
+
+
+class Dataset:
+    def __init__(self, path):
+        with open(path, 'r') as f:
+            self.paths = json.load(f)
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                         std=[0.229, 0.224, 0.225])
+        self.image_transform = transforms.Compose(
+            [transforms.ToTensor(), normalize])
+        self.bad_indices = set()
+
+    def return_other(self, index):
+        if index > 0:
+            return self.__getitem__(index - 1)
+        else:
+            return self.__getitem__(len(self.paths) - 1)
+
+    def __getitem__(self, index):
+        image_path = self.paths[index]
+        return self.image_transform(Image.open(image_path))
+
+    def __len__(self):
+        return len(self.paths)
 
 
 def uni_model_transform(tensor, width, height):
@@ -31,14 +55,28 @@ def uni_model_transform(tensor, width, height):
 
 
 model_name = sys.argv[2]
+token = "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"
+login(token=token)
 
 if model_name == "resnet50":
     model = resnet50(pretrained=True)
     target_layer = model.layer4
     reshape_transform = None
+
+elif model_name == "resnet50_layer3":
+    model = resnet50(pretrained=True)
+    target_layer = model.layer3
+    reshape_transform = None
+
+elif model_name == "gigapath":
+    model = timm.create_model("hf_hub:prov-gigapath/prov-gigapath", pretrained=True, dynamic_img_size=True)
+    target_layer = model.blocks[-1]
+    reshape_transform = partial(
+        uni_model_transform,
+        width=16,
+        height=16,
+    )
 elif model_name == "uni":
-    token = "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"
-    login(token=token)
     model = timm.create_model(
         "hf-hub:MahmoodLab/uni",
         pretrained=True,
@@ -57,7 +95,7 @@ model.eval()
 unsupervised_seg = DFFSeg(
     model=model,
     target_layer=target_layer,
-    n_concepts=64,
+    n_concepts=256,
     reshape_transform=reshape_transform
 )
 
@@ -72,5 +110,5 @@ for epoch in range(10):
 
         if index % 100 == 0:
             np.save(
-                f"concepts_{model_name}_concepts.npy",
+                f"concepts_{model_name}_256_concepts.npy",
                 unsupervised_seg.concepts)

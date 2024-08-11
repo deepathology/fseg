@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Optional
 import numpy as np
 import matplotlib.pyplot as plt
 from pytorch_grad_cam.activations_and_gradients import ActivationsAndGradients
@@ -156,6 +156,7 @@ class DFFSeg:
             n_concepts: int,
             reshape_transform: Callable = None,
             random_state: int = 0,
+            concepts: Optional[np.ndarray] = None,
             crf_smoothing: bool = False,
             w1: float = 10.0,
             w2: float = 3.0,
@@ -169,6 +170,7 @@ class DFFSeg:
         self.n_concepts = n_concepts
         self.reshape_transform = reshape_transform
         self.random_state = random_state
+        self.concepts = concepts
         self.crf_smoothing = crf_smoothing
         self.w1 = w1
         self.w2 = w2
@@ -204,12 +206,13 @@ class DFFSeg:
             activations = self.activations_and_grads.activations[0].cpu(
             ).numpy()
 
+        #print("activations before ", activations.shape)
         activations = activations[0].transpose((1, 2, 0))
         vector = activations.reshape(-1, activations.shape[-1])
-
+        #print("activations", activations.shape)
         w, __, __ = non_negative_factorization(
             X=vector,
-            H=self.concepts.transpose(),
+            H=self.concepts,
             W=None,
             n_components=self.n_concepts,
             update_H=False,
@@ -245,8 +248,8 @@ class DFFSeg:
         reshaped_activations = activations.transpose((1, 0, 2, 3))
         reshaped_activations[np.isnan(reshaped_activations)] = 0
         reshaped_activations = reshaped_activations.reshape(
-            reshaped_activations.shape[0], -1)
-        reshaped_activations = reshaped_activations
+            reshaped_activations.shape[0], -1).transpose()
+        print("reshaped_activations", reshaped_activations.shape)
         try:
             _ = self.nmf_model
             print("re-using model")
@@ -259,6 +262,8 @@ class DFFSeg:
 
         self.nmf_model.partial_fit(reshaped_activations)
         self.concepts = self.nmf_model.components_
+
+        print("partial fit", self.concepts.shape, activations.shape, reshaped_activations.shape)
 
     def get_activations(self, input_tensor: torch.tensor) -> np.ndarray:
         with torch.no_grad():
@@ -274,3 +279,4 @@ class DFFSeg:
         """
         activations = self.get_activations(input_tensor)
         self.concepts, __ = dff(activations, self.n_concepts)
+        self.concepts = self.concepts.transpose()
