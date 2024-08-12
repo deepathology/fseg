@@ -154,6 +154,7 @@ class DFFSeg:
             model,
             target_layer,
             n_concepts: int,
+            model_name: str = "dffseg",
             reshape_transform: Callable = None,
             random_state: int = 0,
             concepts: Optional[np.ndarray] = None,
@@ -167,6 +168,7 @@ class DFFSeg:
             it: int = 5,
     ):
         self.model = model
+        self.model_name = model_name
         self.target_layer = target_layer
         self.n_concepts = n_concepts
         self.reshape_transform = reshape_transform
@@ -183,6 +185,9 @@ class DFFSeg:
 
         self.activations_and_grads = ActivationsAndGradients(
             self.model, [self.target_layer], self.reshape_transform)
+
+    def get_model_name(self) -> str:
+        return self.model_name
 
     def fit_predict(self, input_tensor: torch.tensor) -> np.ndarray:
         """
@@ -234,9 +239,18 @@ class DFFSeg:
 
         if self.crf_smoothing:
             segmentation = densecrf_on_image(
-                np.uint8(
+                image=np.uint8(
                     input_tensor[0].cpu().numpy()).transpose(
-                    1, 2, 0), w_resized)
+                    1, 2, 0),
+                prob=w_resized,
+                w1=self.w1,
+                w2=self.w2,
+                alpha=self.alpha,
+                beta=self.beta,
+                gamma=self.gamma,
+                it=self.it,
+            )
+            
         else:
             w_resized = w_resized.argmax(axis=-1)
             segmentation = np.array(
