@@ -158,6 +158,7 @@ class DFFSeg:
             random_state: int = 0,
             concepts: Optional[np.ndarray] = None,
             crf_smoothing: bool = False,
+            scale_before_argmax = False,
             w1: float = 10.0,
             w2: float = 3.0,
             alpha: float = 80,
@@ -172,6 +173,7 @@ class DFFSeg:
         self.random_state = random_state
         self.concepts = concepts
         self.crf_smoothing = crf_smoothing
+        self.scale_before_argmax = scale_before_argmax
         self.w1 = w1
         self.w2 = w2
         self.alpha = alpha
@@ -206,10 +208,8 @@ class DFFSeg:
             activations = self.activations_and_grads.activations[0].cpu(
             ).numpy()
 
-        #print("activations before ", activations.shape)
         activations = activations[0].transpose((1, 2, 0))
         vector = activations.reshape(-1, activations.shape[-1])
-        #print("activations", activations.shape)
         w, __, __ = non_negative_factorization(
             X=vector,
             H=self.concepts,
@@ -228,6 +228,9 @@ class DFFSeg:
         size = (input_tensor.shape[2], input_tensor.shape[3])
         w_resized = torch.nn.functional.interpolate(w_for_resize, size, mode='bilinear')[
             0].numpy().transpose((1, 2, 0))
+
+        if self.scale_before_argmax:
+            w_resized = w_resized / np.max(w_resized, axis = (0, 1))[None, None, :]
 
         if self.crf_smoothing:
             segmentation = densecrf_on_image(
