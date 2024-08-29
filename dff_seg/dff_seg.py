@@ -153,10 +153,8 @@ class DFFSeg:
             self,
             model,
             target_layer,
-            n_concepts: int,
             reshape_transform: Callable = None,
             random_state: int = 0,
-            concepts: Optional[np.ndarray] = None,
             crf_smoothing: bool = False,
             scale_before_argmax = False,
             w1: float = 10.0,
@@ -168,10 +166,8 @@ class DFFSeg:
     ):
         self.model = model
         self.target_layer = target_layer
-        self.n_concepts = n_concepts
         self.reshape_transform = reshape_transform
         self.random_state = random_state
-        self.concepts = concepts
         self.crf_smoothing = crf_smoothing
         self.scale_before_argmax = scale_before_argmax
         self.w1 = w1
@@ -195,7 +191,55 @@ class DFFSeg:
         self.fit(input_tensor=input_tensor)
         return self.predict(input_tensor)
 
-    def predict(self, input_tensor: torch.tensor):
+    def get_activations(self, input_tensor: torch.tensor) -> np.ndarray:
+        with torch.no_grad():
+            self.activations_and_grads(input_tensor)
+            activations = self.activations_and_grads.activations[0].cpu(
+            ).numpy()
+
+        activations = activations[0].transpose((1, 2, 0))
+        return activations
+
+    def predict_clustering(self, input_tensor: torch.tensor, clusters: np.ndarray, k=20) -> np.ndarray:
+        activations = self.get_activations(input_tensor)
+        vector = activations.reshape(-1, activations.shape[-1])
+
+        component_concepts, w = dff(activations, k)
+        component_concepts = component_concepts.transpose()
+        labels = {}
+        for i in range(len(component_concepts)):
+            norm = np.linalg.norm(component_concepts[i, :] - clusters, axis=-1)
+            labels[i] = norm.argmin()
+        
+        w_for_resize = torch.from_numpy(w)
+        size = (input_tensor.shape[2], input_tensor.shape[3])
+        w_resized = torch.nn.functional.interpolate(w_for_resize, size, mode='bilinear')[
+            0].numpy().transpose((1, 2, 0))
+
+        if self.scale_before_argmax:
+            w_resized = w_resized / np.max(w_resized, axis = (0, 1))[None, None, :]
+
+        if self.crf_smoothing:
+            segmentation = densecrf_on_image(
+                np.uint8(
+                    input_tensor[0].cpu().numpy()).transpose(
+                    1, 2, 0), w_resized)
+        else:
+            w_resized = w_resized.argmax(axis=-1)
+            segmentation = np.array(
+                Image.fromarray(
+                    np.uint8(w_resized)).resize(
+                    (input_tensor.shape[3], input_tensor.shape[2])))
+            
+        
+        converted_segmentation = segmentation.copy()
+        for i in labels:
+            converted_segmentation[segmentation == i] = labels[i]
+        return converted_segmentation
+
+
+
+    def predict_project_concepts(self, input_tensor: torch.tensor, concepts) -> np.ndarray:
         """
         Predict the segmentation for the given input tensor.
 
@@ -203,24 +247,21 @@ class DFFSeg:
         :return: The predicted segmentation as a numpy array.
 
         """
-        with torch.no_grad():
-            self.activations_and_grads(input_tensor)
-            activations = self.activations_and_grads.activations[0].cpu(
-            ).numpy()
-
-        activations = activations[0].transpose((1, 2, 0))
+        activations = self.get_activations(input_tensor)
         vector = activations.reshape(-1, activations.shape[-1])
+
         w, __, __ = non_negative_factorization(
             X=vector,
-            H=self.concepts,
+            H=concepts,
             W=None,
-            n_components=self.n_concepts,
+            n_components=len(concepts),
             update_H=False,
             random_state=self.random_state,
             max_iter=10000,
         )
 
         w = w.reshape((activations.shape[0], activations.shape[1], -1))
+
         w_for_resize = torch.tensor(
             w.transpose(
                 (2, 0, 1))[
