@@ -206,6 +206,7 @@ class DFFSeg:
         return activations
 
     def predict_clustering(self, input_tensor: torch.tensor, clusters: np.ndarray, k: int=20) -> np.ndarray:
+        clusters[clusters < 0] = 0
         activations = self.get_activations(input_tensor)
         # vector = activations.reshape(-1, activations.shape[-1])
 
@@ -265,6 +266,7 @@ class DFFSeg:
         :return: The predicted segmentation as a numpy array.
 
         """
+        concepts[concepts < 0] = 0
         activations = self.get_activations(input_tensor).transpose((0, 2, 3, 1))
         vector = activations.reshape(-1, activations.shape[-1])
         w, __, __ = non_negative_factorization(
