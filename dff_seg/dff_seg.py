@@ -152,6 +152,7 @@ class DFFSeg:
     def __init__(
             self,
             model,
+            model_name: str,
             target_layer,
             reshape_transform: Callable = None,
             random_state: int = 0,
@@ -166,6 +167,7 @@ class DFFSeg:
     ):
         self.model = model
         self.target_layer = target_layer
+        self.model_name = model_name
         self.reshape_transform = reshape_transform
         self.random_state = random_state
         self.crf_smoothing = crf_smoothing
@@ -205,7 +207,7 @@ class DFFSeg:
 
     def predict_clustering(self, input_tensor: torch.tensor, clusters: np.ndarray, k: int=20) -> np.ndarray:
         activations = self.get_activations(input_tensor)
-        vector = activations.reshape(-1, activations.shape[-1])
+        # vector = activations.reshape(-1, activations.shape[-1])
 
         component_concepts, w = dff(activations, k)
         component_concepts = component_concepts.transpose()
@@ -223,10 +225,23 @@ class DFFSeg:
             w_resized = w_resized / np.max(w_resized, axis = (0, 1))[None, None, :]
 
         if self.crf_smoothing:
-            segmentation = densecrf_on_image(
-                np.uint8(
+            crf_input_image = np.array(
                     input_tensor[0].cpu().numpy()).transpose(
-                    1, 2, 0), w_resized)
+                    1, 2, 0)
+            
+            mean=np.array([0.485, 0.456, 0.406])
+            std=np.array([0.229, 0.224, 0.225])
+            crf_input_image = np.uint8(255 * ((crf_input_image*std + mean)))
+            segmentation = densecrf_on_image(
+                image=crf_input_image,
+                prob=w_resized,
+                w1=self.w1,
+                w2=self.w2,
+                alpha=self.alpha,
+                beta=self.beta,
+                gamma=self.gamma,
+                it=self.it,
+            )
         else:
             w_resized = w_resized.argmax(axis=-1)
             segmentation = np.array(
@@ -276,10 +291,15 @@ class DFFSeg:
             w_resized = w_resized / np.max(w_resized, axis = (0, 1))[None, None, :]
 
         if self.crf_smoothing:
-            segmentation = densecrf_on_image(
-                image=np.uint8(
+            crf_input_image = np.array(
                     input_tensor[0].cpu().numpy()).transpose(
-                    1, 2, 0),
+                    1, 2, 0)
+            
+            mean=np.array([0.485, 0.456, 0.406])
+            std=np.array([0.229, 0.224, 0.225])
+            crf_input_image = np.uint8(255 * ((crf_input_image*std + mean)))
+            segmentation = densecrf_on_image(
+                image=crf_input_image,
                 prob=w_resized,
                 w1=self.w1,
                 w2=self.w2,
