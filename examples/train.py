@@ -95,13 +95,13 @@ model.eval()
 unsupervised_seg = DFFSeg(
     model=model,
     target_layer=target_layer,
-    n_concepts=256,
+    n_concepts=64,
     reshape_transform=reshape_transform
 )
 
 dataset = Dataset(sys.argv[1])
 loader = torch.utils.data.DataLoader(
-    dataset, batch_size=32, num_workers=2, shuffle=True)
+    dataset, batch_size=128, num_workers=2, shuffle=True)
 
 
 for epoch in range(10):
@@ -110,5 +110,5 @@ for epoch in range(10):
 
         if index % 100 == 0:
             np.save(
-                f"concepts_{model_name}_256_concepts.npy",
+                f"concepts_{model_name}_64_concepts.npy",
                 unsupervised_seg.concepts)
