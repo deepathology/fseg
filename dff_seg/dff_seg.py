@@ -152,7 +152,6 @@ class DFFSeg:
     def __init__(
             self,
             model,
-            model_name: str,
             target_layer,
             reshape_transform: Callable = None,
             random_state: int = 0,
@@ -167,7 +166,6 @@ class DFFSeg:
     ):
         self.model = model
         self.target_layer = target_layer
-        self.model_name = model_name
         self.reshape_transform = reshape_transform
         self.random_state = random_state
         self.crf_smoothing = crf_smoothing
@@ -181,9 +179,6 @@ class DFFSeg:
 
         self.activations_and_grads = ActivationsAndGradients(
             self.model, [self.target_layer], self.reshape_transform)
-
-    def get_model_name(self) -> str:
-        return self.model_name
 
     def fit_predict(self, input_tensor: torch.tensor) -> np.ndarray:
         """
@@ -278,9 +273,9 @@ class DFFSeg:
             random_state=self.random_state,
             max_iter=10000,
         )
+        print(activations.shape, vector.shape, concepts.shape, w.shape)
 
-        w = w.reshape((activations.shape[0], activations.shape[1], -1))
-
+        w = w.reshape((activations.shape[1], activations.shape[2], -1))
         w_for_resize = torch.tensor(
             w.transpose(
                 (2, 0, 1))[
@@ -290,7 +285,7 @@ class DFFSeg:
             0].numpy().transpose((1, 2, 0))
 
         if self.scale_before_argmax:
-            w_resized = w_resized / np.max(w_resized, axis = (0, 1))[None, None, :]
+            w_resized = w_resized / (1e-5+ np.max(w_resized, axis = (0, 1))[None, None, :])
 
         if self.crf_smoothing:
             crf_input_image = np.array(
@@ -312,6 +307,7 @@ class DFFSeg:
             )
             
         else:
+            print(w_resized, w_resized.shape)
             w_resized = w_resized.argmax(axis=-1)
             segmentation = np.array(
                 Image.fromarray(
