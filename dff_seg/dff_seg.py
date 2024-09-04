@@ -6,6 +6,7 @@ import torch
 import denseCRF
 from sklearn.decomposition import NMF, non_negative_factorization, MiniBatchNMF
 from PIL import Image
+from sklearn.metrics.pairwise import cosine_distances
 
 
 def show_segmentation_on_image(
@@ -200,18 +201,16 @@ class DFFSeg:
         activations = activations[0].transpose((1, 2, 0))
         return activations
 
-    def predict_clustering(self, input_tensor: torch.tensor, clusters: np.ndarray, k: int=20) -> np.ndarray:
-        clusters[clusters < 0] = 0
+    def predict_clustering(self, input_tensor: torch.tensor, clustering_model: np.ndarray, k: int=20) -> np.ndarray:
+        # clusters[clusters < 0] = 0
         activations = self.get_activations(input_tensor)
-        # vector = activations.reshape(-1, activations.shape[-1])
 
         component_concepts, w = dff(activations, k)
         component_concepts = component_concepts.transpose()
         labels = {}
         for i in range(len(component_concepts)):
-            norm = np.linalg.norm(component_concepts[i, :] - clusters, axis=-1)
-            labels[i] = norm.argmin()
-        
+            labels[i] = clustering_model(component_concepts[i, :][None, :])
+
         w_for_resize = torch.from_numpy(w)
         size = (input_tensor.shape[2], input_tensor.shape[3])
         w_resized = torch.nn.functional.interpolate(w_for_resize, size, mode='bilinear')[
@@ -273,7 +272,6 @@ class DFFSeg:
             random_state=self.random_state,
             max_iter=10000,
         )
-        print(activations.shape, vector.shape, concepts.shape, w.shape)
 
         w = w.reshape((activations.shape[1], activations.shape[2], -1))
         w_for_resize = torch.tensor(
@@ -286,6 +284,55 @@ class DFFSeg:
 
         if self.scale_before_argmax:
             w_resized = w_resized / (1e-5+ np.max(w_resized, axis = (0, 1))[None, None, :])
+
+        if self.crf_smoothing:
+            crf_input_image = np.array(
+                    input_tensor[0].cpu().numpy()).transpose(
+                    1, 2, 0)
+
+            mean=np.array([0.485, 0.456, 0.406])
+            std=np.array([0.229, 0.224, 0.225])
+            crf_input_image = np.uint8(255 * ((crf_input_image*std + mean)))
+            segmentation = densecrf_on_image(
+                image=crf_input_image,
+                prob=w_resized,
+                w1=self.w1,
+                w2=self.w2,
+                alpha=self.alpha,
+                beta=self.beta,
+                gamma=self.gamma,
+                it=self.it,
+            )
+
+        else:
+            w_resized = w_resized.argmax(axis=-1)
+            segmentation = np.array(
+                Image.fromarray(
+                    np.uint8(w_resized)).resize(
+                    (input_tensor.shape[3], input_tensor.shape[2])))
+        return segmentation
+
+    def predict_on_single_image(self, input_tensor: torch.tensor, k: int) -> np.ndarray:
+        """
+        Predict the segmentation for the given input tensor.
+
+        :param input_tensor: The input tensor.
+        :param k: Number of concepts for NMF dimension.
+        :return: The predicted segmentation as a numpy array and its corresponsing concepts.
+
+        """
+        activations = self.get_activations(input_tensor)
+
+        component_concepts, w = dff(activations, k)
+        component_concepts = component_concepts.transpose()
+
+        w_for_resize = torch.from_numpy(w)
+        size = (input_tensor.shape[2], input_tensor.shape[3])
+        w_resized = torch.nn.functional.interpolate(w_for_resize, size, mode='bilinear')[
+            0].numpy().transpose((1, 2, 0))
+
+        if self.scale_before_argmax:
+            w_resized = w_resized / np.max(w_resized, axis = (0, 1))[None, None, :]
 
         if self.crf_smoothing:
             crf_input_image = np.array(
@@ -305,15 +352,14 @@ class DFFSeg:
                 gamma=self.gamma,
                 it=self.it,
             )
-            
         else:
-            print(w_resized, w_resized.shape)
             w_resized = w_resized.argmax(axis=-1)
             segmentation = np.array(
                 Image.fromarray(
                     np.uint8(w_resized)).resize(
                     (input_tensor.shape[3], input_tensor.shape[2])))
-        return segmentation
+            
+        return segmentation, component_concepts
 
     def partial_fit(self, input_tensor: torch.tensor) -> None:
         activations = self.get_activations(input_tensor)
