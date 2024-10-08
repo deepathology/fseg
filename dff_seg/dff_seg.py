@@ -202,7 +202,6 @@ class DFFSeg:
         return activations
 
     def predict_clustering(self, input_tensor: torch.tensor, clustering_model: np.ndarray, k: int=20) -> np.ndarray:
-        # clusters[clusters < 0] = 0
         activations = self.get_activations(input_tensor)
 
         component_concepts, w = dff(activations, k)
@@ -249,8 +248,6 @@ class DFFSeg:
         for i in labels:
             converted_segmentation[segmentation == i] = labels[i]
         return converted_segmentation
-
-
 
     def predict_project_concepts(self, input_tensor: torch.tensor, concepts: np.ndarray) -> np.ndarray:
         """
