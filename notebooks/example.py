@@ -5,6 +5,7 @@ from torchvision.models import resnet50
 from functools import partial
 import timm
 from huggingface_hub import login
+import torch
 
 from dff_seg import DFFSeg, show_segmentation_on_image
 
