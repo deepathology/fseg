@@ -1,12 +1,10 @@
-from typing import Callable, Optional
+from typing import Callable
 import numpy as np
 import matplotlib.pyplot as plt
 from pytorch_grad_cam.activations_and_gradients import ActivationsAndGradients
 import torch
-import denseCRF
 from sklearn.decomposition import NMF, non_negative_factorization, MiniBatchNMF
 from PIL import Image
-from sklearn.metrics.pairwise import cosine_distances
 
 
 def show_segmentation_on_image(
@@ -79,58 +77,6 @@ def dff(activations: np.ndarray, n_components: int = 5):
     return concepts, explanations
 
 
-def densecrf(
-        I: np.ndarray,
-        P: np.ndarray,
-        params: tuple[float, float, float, float, float, int],
-) -> np.ndarray:
-    """Applying densecrf.
-
-    :param I: A numpy array of shape [H, W, C], where C should be 3.
-               type of I should be np.uint8, and the values are in [0, 255]
-    :param P: A probability map of shape [H, W, L], where L is the number of classes
-               type of P should be np.float32
-    :param params: A tuple giving parameters of CRF (w1, alpha, beta, w2, gamma, it).
-    :return: A numpy array of shape [H, W], where pixel values represent class indices.
-
-    """
-    out = denseCRF.densecrf(I, P, params)
-    return out
-
-
-def densecrf_on_image(
-        image: np.ndarray,
-        prob: np.ndarray,
-        w1: float = 10.0,
-        w2: float = 3.0,
-        alpha: float = 80,
-        beta: float = 13,
-        gamma: float = 3,
-        it: int = 5,
-) -> np.ndarray:
-    """Applying densecrf on image, given the segmentation probabilities.
-
-    :param iamge: Input rgb image.
-    :param prob: Probability mask.
-    :param w1: Weight of bilateral term, e.g. 10.0
-    :param alpha: Spatial distance std, e.g., 80
-    :param beta: Rgb value std, e.g., 15
-    :param w2: Weight of spatial term, e.g., 3.0
-    :param gamma: Spatial distance std for spatial term, e.g., 3
-    :param it: Iteration number, e.g., 5
-    :return: A numpy array of shape [H, W], where pixel values represent class indices.
-
-    """
-    I = image
-    Iq = np.asarray(I)
-    prob = prob / prob.sum(axis=-1)[:, :, None]
-
-    param = (w1, alpha, beta, w2, gamma, it)
-    lab = densecrf(Iq, prob, param)
-    lab = np.array(Image.fromarray(lab))
-    return lab
-
-
 class DFFSeg:
     """
     A class to perform Deep Feature Factorization (DFF) based segmentation on images.
@@ -140,13 +86,6 @@ class DFFSeg:
     :param n_concepts: The number of concepts for the non-negative matrix factorization.
     :param reshape_transform: A function to reshape the activations, defaults to None.
     :param random_state: Random state for reproducibility, defaults to 0.
-    :param crf_smoothing: Whether to apply CRF smoothing, defaults to False.
-    :param w1: Weight of the bilateral term for CRF, defaults to 10.0.
-    :param w2: Weight of the spatial term for CRF, defaults to 3.0.
-    :param alpha: Spatial distance std for CRF, defaults to 80.
-    :param beta: RGB value std for CRF, defaults to 13.
-    :param gamma: Spatial distance std for the spatial term in CRF, defaults to 3.
-    :param it: Iteration number for CRF, defaults to 5.
 
     """
 
@@ -156,27 +95,11 @@ class DFFSeg:
             target_layer,
             reshape_transform: Callable = None,
             random_state: int = 0,
-            crf_smoothing: bool = False,
-            scale_before_argmax = False,
-            w1: float = 10.0,
-            w2: float = 3.0,
-            alpha: float = 80,
-            beta: float = 13,
-            gamma: float = 3,
-            it: int = 5,
     ):
         self.model = model
         self.target_layer = target_layer
         self.reshape_transform = reshape_transform
         self.random_state = random_state
-        self.crf_smoothing = crf_smoothing
-        self.scale_before_argmax = scale_before_argmax
-        self.w1 = w1
-        self.w2 = w2
-        self.alpha = alpha
-        self.beta = beta
-        self.gamma = gamma
-        self.it = it
 
         self.activations_and_grads = ActivationsAndGradients(
             self.model, [self.target_layer], self.reshape_transform)
@@ -215,35 +138,12 @@ class DFFSeg:
         w_resized = torch.nn.functional.interpolate(w_for_resize, size, mode='bilinear')[
             0].numpy().transpose((1, 2, 0))
 
-        if self.scale_before_argmax:
-            w_resized = w_resized / np.max(w_resized, axis = (0, 1))[None, None, :]
+        w_resized = w_resized.argmax(axis=-1)
+        segmentation = np.array(
+            Image.fromarray(
+                np.uint8(w_resized)).resize(
+                (input_tensor.shape[3], input_tensor.shape[2])))
 
-        if self.crf_smoothing:
-            crf_input_image = np.array(
-                    input_tensor[0].cpu().numpy()).transpose(
-                    1, 2, 0)
-            
-            mean=np.array([0.485, 0.456, 0.406])
-            std=np.array([0.229, 0.224, 0.225])
-            crf_input_image = np.uint8(255 * ((crf_input_image*std + mean)))
-            segmentation = densecrf_on_image(
-                image=crf_input_image,
-                prob=w_resized,
-                w1=self.w1,
-                w2=self.w2,
-                alpha=self.alpha,
-                beta=self.beta,
-                gamma=self.gamma,
-                it=self.it,
-            )
-        else:
-            w_resized = w_resized.argmax(axis=-1)
-            segmentation = np.array(
-                Image.fromarray(
-                    np.uint8(w_resized)).resize(
-                    (input_tensor.shape[3], input_tensor.shape[2])))
-            
-        
         converted_segmentation = segmentation.copy()
         for i in labels:
             converted_segmentation[segmentation == i] = labels[i]
@@ -279,34 +179,11 @@ class DFFSeg:
         w_resized = torch.nn.functional.interpolate(w_for_resize, size, mode='bilinear')[
             0].numpy().transpose((1, 2, 0))
 
-        if self.scale_before_argmax:
-            w_resized = w_resized / (1e-5+ np.max(w_resized, axis = (0, 1))[None, None, :])
-
-        if self.crf_smoothing:
-            crf_input_image = np.array(
-                    input_tensor[0].cpu().numpy()).transpose(
-                    1, 2, 0)
-
-            mean=np.array([0.485, 0.456, 0.406])
-            std=np.array([0.229, 0.224, 0.225])
-            crf_input_image = np.uint8(255 * ((crf_input_image*std + mean)))
-            segmentation = densecrf_on_image(
-                image=crf_input_image,
-                prob=w_resized,
-                w1=self.w1,
-                w2=self.w2,
-                alpha=self.alpha,
-                beta=self.beta,
-                gamma=self.gamma,
-                it=self.it,
-            )
-
-        else:
-            w_resized = w_resized.argmax(axis=-1)
-            segmentation = np.array(
-                Image.fromarray(
-                    np.uint8(w_resized)).resize(
-                    (input_tensor.shape[3], input_tensor.shape[2])))
+        w_resized = w_resized.argmax(axis=-1)
+        segmentation = np.array(
+            Image.fromarray(
+                np.uint8(w_resized)).resize(
+                (input_tensor.shape[3], input_tensor.shape[2])))
         return segmentation
 
     def predict_on_single_image(self, input_tensor: torch.tensor, k: int) -> np.ndarray:
@@ -328,44 +205,20 @@ class DFFSeg:
         w_resized = torch.nn.functional.interpolate(w_for_resize, size, mode='bilinear')[
             0].numpy().transpose((1, 2, 0))
 
-        if self.scale_before_argmax:
-            w_resized = w_resized / np.max(w_resized, axis = (0, 1))[None, None, :]
-
-        if self.crf_smoothing:
-            crf_input_image = np.array(
-                    input_tensor[0].cpu().numpy()).transpose(
-                    1, 2, 0)
-            
-            mean=np.array([0.485, 0.456, 0.406])
-            std=np.array([0.229, 0.224, 0.225])
-            crf_input_image = np.uint8(255 * ((crf_input_image*std + mean)))
-            segmentation = densecrf_on_image(
-                image=crf_input_image,
-                prob=w_resized,
-                w1=self.w1,
-                w2=self.w2,
-                alpha=self.alpha,
-                beta=self.beta,
-                gamma=self.gamma,
-                it=self.it,
-            )
-        else:
-            w_resized = w_resized.argmax(axis=-1)
-            segmentation = np.array(
-                Image.fromarray(
-                    np.uint8(w_resized)).resize(
-                    (input_tensor.shape[3], input_tensor.shape[2])))
+        w_resized = w_resized.argmax(axis=-1)
+        segmentation = np.array(
+            Image.fromarray(
+                np.uint8(w_resized)).resize(
+                (input_tensor.shape[3], input_tensor.shape[2])))
             
         return segmentation, component_concepts
 
     def partial_fit(self, input_tensor: torch.tensor) -> None:
         activations = self.get_activations(input_tensor)
-        batch_size, __, h, w = activations.shape
         reshaped_activations = activations.transpose((1, 0, 2, 3))
         reshaped_activations[np.isnan(reshaped_activations)] = 0
         reshaped_activations = reshaped_activations.reshape(
             reshaped_activations.shape[0], -1).transpose()
-        print("reshaped_activations", reshaped_activations.shape)
         try:
             _ = self.nmf_model
             print("re-using model")
@@ -378,8 +231,6 @@ class DFFSeg:
 
         self.nmf_model.partial_fit(reshaped_activations)
         self.concepts = self.nmf_model.components_
-
-        print("partial fit", self.concepts.shape, activations.shape, reshaped_activations.shape)
 
     def get_activations(self, input_tensor: torch.tensor) -> np.ndarray:
         with torch.no_grad():

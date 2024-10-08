@@ -1,18 +1,11 @@
-#!/usr/bin/env python
-# SBATCH --job-name "TEST"
-# SBATCH --error slurm.%j.err
-# SBATCH --output slurm.%j.out
-
-from dff_seg.dff_seg import DFFSeg, show_segmentation_on_image
+from dff_seg.dff_seg import DFFSeg
 import numpy as np
 from PIL import Image
-from pytorch_grad_cam.utils.image import preprocess_image
 from torchvision.models import resnet50
 from functools import partial
 import timm
 from huggingface_hub import login
 import torch
-import time
 import json
 import sys
 import tqdm

@@ -1,8 +1,6 @@
-import torch
 import json
 from torchvision import transforms
 from PIL import Image
-import numpy as np
 
 
 class Dataset:
