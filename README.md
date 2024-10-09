@@ -58,6 +58,48 @@ concepts = model_embeddings[k]
 
 5. Generate the segmentation prediction:
 
+* Using concepts projection:
 ```python
 segmentation_prediction = unsupervised_seg.predict_project_concepts(input_tensor, concepts)
+```
+
+* Using concepts similarity:
+
+class ConceptClustering:
+    def __init__(self, clusters: np.ndarray):
+        """
+        Clustering model based on the cosine similarity between the concept
+        embeddings.
+
+        :param clusters: The clusters centroids embeddings.
+
+        """
+        self.clusters = clusters
+
+    def __call__(self, vector: np.ndarray) -> int:
+        return cosine_distances(vector, self.clusters).argmin()
+
+```python
+clustering_model = ConceptClustering(concepts)
+segmentation_prediction = unsupervised_seg.predict_clustering(input_tensor, clustering_model)
+```
+
+## License and Terms of Use
+
+This project is licensed under the Apache License, Version 2.0. You can find the full text of the license in the LICENSE file in the root directory of this project or at http://www.apache.org/licenses/LICENSE-2.0
+
+Please ensure that you comply with the terms of the license when using, modifying, or distributing this software.
+
+
+## Citation
+
+If you use this code in your research, please cite using this BibTeX:
+
+```
+@article{gildenblat2024segmentation,
+  title={Segmentation by Factorization: Unsupervised Semantic Segmentation for Pathology by Factorizing Foundation Model Features},
+  author={Gildenblat, Jacob and Hadar, Ofir},
+  journal={arXiv preprint arXiv:2409.05697},
+  year={2024}
+}
 ```

@@ -6,6 +6,14 @@ import torch
 from sklearn.decomposition import NMF, non_negative_factorization, MiniBatchNMF
 from PIL import Image
 
+"""
+This module implements Deep Feature Factorization (DFF) for image segmentation.
+
+It provides functions for performing DFF on activation maps, visualizing
+segmentation results, and utility functions for processing and displaying
+the output.
+"""
+
 
 def show_segmentation_on_image(
         img: np.uint8,
@@ -124,7 +132,20 @@ class DFFSeg:
         activations = activations[0].transpose((1, 2, 0))
         return activations
 
-    def predict_clustering(self, input_tensor: torch.tensor, clustering_model: np.ndarray, k: int=20) -> np.ndarray:
+    def predict_clustering(
+            self,
+            input_tensor: torch.tensor,
+            clustering_model: np.ndarray,
+            k: int = 20) -> np.ndarray:
+        """
+        Predict the segmentation for the given input tensor with the given clustering model.
+
+        :param input_tensor: The input tensor.
+        :param clustering_model: The clustering model to use.
+        :param k: The number of concepts for NMF dimension.
+        :return: The predicted clustering as a numpy array.
+
+        """
         activations = self.get_activations(input_tensor)
 
         component_concepts, w = dff(activations, k)
@@ -149,16 +170,21 @@ class DFFSeg:
             converted_segmentation[segmentation == i] = labels[i]
         return converted_segmentation
 
-    def predict_project_concepts(self, input_tensor: torch.tensor, concepts: np.ndarray) -> np.ndarray:
+    def predict_project_concepts(
+            self,
+            input_tensor: torch.tensor,
+            concepts: np.ndarray) -> np.ndarray:
         """
-        Predict the segmentation for the given input tensor.
+        Predict the segmentation for the given input tensor with the given concepts.
 
         :param input_tensor: The input tensor.
+        :param concepts: The concepts to use for the projection.
         :return: The predicted segmentation as a numpy array.
 
         """
         concepts[concepts < 0] = 0
-        activations = self.get_activations(input_tensor).transpose((0, 2, 3, 1))
+        activations = self.get_activations(
+            input_tensor).transpose((0, 2, 3, 1))
         vector = activations.reshape(-1, activations.shape[-1])
         w, __, __ = non_negative_factorization(
             X=vector,
@@ -186,7 +212,10 @@ class DFFSeg:
                 (input_tensor.shape[3], input_tensor.shape[2])))
         return segmentation
 
-    def predict_on_single_image(self, input_tensor: torch.tensor, k: int) -> np.ndarray:
+    def predict_on_single_image(
+            self,
+            input_tensor: torch.tensor,
+            k: int) -> np.ndarray:
         """
         Predict the segmentation for the given input tensor.
 
@@ -210,10 +239,16 @@ class DFFSeg:
             Image.fromarray(
                 np.uint8(w_resized)).resize(
                 (input_tensor.shape[3], input_tensor.shape[2])))
-            
+
         return segmentation, component_concepts
 
     def partial_fit(self, input_tensor: torch.tensor) -> None:
+        """
+        Fit the model on the input tensor to compute the concepts.
+
+        :param input_tensor: The input tensor.
+
+        """
         activations = self.get_activations(input_tensor)
         reshaped_activations = activations.transpose((1, 0, 2, 3))
         reshaped_activations[np.isnan(reshaped_activations)] = 0
@@ -233,6 +268,13 @@ class DFFSeg:
         self.concepts = self.nmf_model.components_
 
     def get_activations(self, input_tensor: torch.tensor) -> np.ndarray:
+        """
+        Get the activations for the given input tensor.
+
+        :param input_tensor: The input tensor.
+        :return: The activations as a numpy array.
+
+        """
         with torch.no_grad():
             self.activations_and_grads(input_tensor)
             return self.activations_and_grads.activations[0].cpu().numpy()

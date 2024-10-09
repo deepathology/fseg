@@ -1,6 +1,5 @@
 numpy
 grad-cam
-SimpleCRF
 scikit-learn
 pillow
 matplotlib
