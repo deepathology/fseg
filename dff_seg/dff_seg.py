@@ -5,6 +5,7 @@ from pytorch_grad_cam.activations_and_gradients import ActivationsAndGradients
 import torch
 from sklearn.decomposition import NMF, non_negative_factorization, MiniBatchNMF
 from PIL import Image
+from sklearn.metrics.pairwise import cosine_distances
 
 """
 This module implements Deep Feature Factorization (DFF) for image segmentation.
@@ -85,6 +86,21 @@ def dff(activations: np.ndarray, n_components: int = 5):
     return concepts, explanations
 
 
+class ConceptClustering:
+    def __init__(self, clusters: np.ndarray):
+        """
+        Clustering model based on the cosine similarity between the concept
+        embeddings.
+
+        :param clusters: The clusters centroids embeddings.
+
+        """
+        self.clusters = clusters
+
+    def __call__(self, vector: np.ndarray) -> int:
+        return cosine_distances(vector, self.clusters).argmin()
+
+
 class DFFSeg:
     """
     A class to perform Deep Feature Factorization (DFF) based segmentation on images.
@@ -135,7 +151,7 @@ class DFFSeg:
     def predict_clustering(
             self,
             input_tensor: torch.tensor,
-            clustering_model: np.ndarray,
+            clustering_model: ConceptClustering,
             k: int = 20) -> np.ndarray:
         """
         Predict the segmentation for the given input tensor with the given clustering model.
