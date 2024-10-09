@@ -65,6 +65,7 @@ segmentation_prediction = unsupervised_seg.predict_project_concepts(input_tensor
 
 * Using concepts similarity:
 
+```python
 class ConceptClustering:
     def __init__(self, clusters: np.ndarray):
         """
@@ -79,7 +80,6 @@ class ConceptClustering:
     def __call__(self, vector: np.ndarray) -> int:
         return cosine_distances(vector, self.clusters).argmin()
 
-```python
 clustering_model = ConceptClustering(concepts)
 segmentation_prediction = unsupervised_seg.predict_clustering(input_tensor, clustering_model)
 ```
