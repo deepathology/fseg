@@ -5,7 +5,7 @@ F-Seg is a Python library that implements Deep Feature Factorization (DFF) for i
 
 F-Seg offers powerful image segmentation capabilities. Here's an example of what it can do:
 
-![F-Seg Capabilities]("./images/showcase.jpg")
+![F-Seg results]("./images/showcase.jpg")
 
 This image demonstrates the segmentation results produced by F-Seg, showcasing its ability to accurately identify and separate different objects or regions within an image.
 
