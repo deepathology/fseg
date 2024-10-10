@@ -7,7 +7,6 @@ F-Seg offers powerful image segmentation capabilities. Here's an example of what
 
 ![F-Seg results](./images/showcase.jpg)
 
-This image demonstrates the segmentation results produced by F-Seg, showcasing its ability to accurately identify and separate different objects or regions within an image.
 
 
 
