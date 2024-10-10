@@ -77,7 +77,7 @@ input_tensor = preprocess_image(rgb_img_float,
 3. Load pre-computed model embeddings:
 
 ```python
-model_embeddings = np.load("<path_to_model_embeddings.npy>")
+model_embeddings = np.load("./model_embeddings/uni.joblib")
 ```
 
 4. Define the number of clusters and prepare the concepts:
