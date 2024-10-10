@@ -2,6 +2,15 @@
 
 F-Seg is a Python library that implements Deep Feature Factorization (DFF) for image segmentation tasks. This method leverages the power of deep neural networks and non-negative matrix factorization to produce meaningful segmentations of images.
 
+
+F-Seg offers powerful image segmentation capabilities. Here's an example of what it can do:
+
+![F-Seg Capabilities]("./images/showcase.jpg")
+
+This image demonstrates the segmentation results produced by F-Seg, showcasing its ability to accurately identify and separate different objects or regions within an image.
+
+
+
 ## Installation
 
 To install F-Seg, you can use pip:
@@ -23,9 +32,32 @@ from fseg import FSeg
 2. Load a pre-trained model and prepare the input image:
 
 ```python
-model = resnet50(pretrained=True)
-target_layer = model.layer3
-reshape_transform = None
+from huggingface_hub import login
+
+
+token = "<your_token>"
+login(token=token)
+
+
+class TransformerReshapeTransform:
+    def __init__(self):
+        self.input_tensor_shape = None
+
+    def __call__(self, tensor):
+        result = torch.nn.ReLU()(tensor[:, 1:, :].reshape(tensor.size(0),
+                                self.input_tensor_shape[2] // 16,
+                                self.input_tensor_shape[3] // 16,
+                                tensor.size(2)))
+        # Bring the channels to the first dimension,
+        # like in CNNs.
+        result = result.transpose(2, 3).transpose(1, 2)
+        return result
+
+
+model = timm.create_model(
+    "hf-hub:MahmoodLab/uni", pretrained=True, init_values=1e-5, dynamic_img_size=True)
+target_layer = model.blocks[-1]    
+transform = TransformerReshapeTransform()
 
 unsupervised_seg = DFFSeg(
     model=model,
@@ -33,56 +65,35 @@ unsupervised_seg = DFFSeg(
     reshape_transform=reshape_transform
 )
 
-img_path = "./notebooks/images/example_3.png"
+img_path = "<Path_to_image>"
 img = np.array(Image.open(img_path))[:, :, :3]
 orig_shape = img.shape
+img = pad_divisible(img)
 rgb_img_float = np.float32(img) / 255
 input_tensor = preprocess_image(rgb_img_float,
                                 mean=[0.485, 0.456, 0.406],
                                 std=[0.229, 0.224, 0.225])
-
 ```
 
 3. Load pre-computed model embeddings:
 
 ```python
-model_embeddings = np.load("path/to/model_embeddings.npy")
+model_embeddings = np.load("<path_to_model_embeddings.npy>")
 ```
 
 4. Define the number of clusters and prepare the concepts:
 
 ```python
-k = 16  # Number of clusters
+k = 64  # Number of clusters
 concepts = model_embeddings[k]
 ```
 
 5. Generate the segmentation prediction:
 
-* Using concepts projection:
 ```python
 segmentation_prediction = unsupervised_seg.predict_project_concepts(input_tensor, concepts)
 ```
 
-* Using concepts similarity:
-
-```python
-class ConceptClustering:
-    def __init__(self, clusters: np.ndarray):
-        """
-        Clustering model based on the cosine similarity between the concept
-        embeddings.
-
-        :param clusters: The clusters centroids embeddings.
-
-        """
-        self.clusters = clusters
-
-    def __call__(self, vector: np.ndarray) -> int:
-        return cosine_distances(vector, self.clusters).argmin()
-
-clustering_model = ConceptClustering(concepts)
-segmentation_prediction = unsupervised_seg.predict_clustering(input_tensor, clustering_model)
-```
 
 ## License and Terms of Use
 
