@@ -64,7 +64,7 @@ unsupervised_seg = DFFSeg(
     reshape_transform=reshape_transform
 )
 
-img_path = "<Path_to_image>"
+img_path = "<path_to_image>"
 img = np.array(Image.open(img_path))[:, :, :3]
 orig_shape = img.shape
 img = pad_divisible(img)
