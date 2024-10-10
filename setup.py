@@ -7,7 +7,7 @@ with open("requirements.txt", "r") as f:
     requirements = f.readlines()
 
 setuptools.setup(
-    name='dff-seg',
+    name='fseg',
     version='1.0.0',
     author='Ofir Hadar, Jacob Gildenblat',
     author_email='jacob.gildenblat@gmail.com',

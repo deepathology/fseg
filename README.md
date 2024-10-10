@@ -1,23 +1,23 @@
-# DFF-Seg: Deep Feature Factorization for Image Segmentation
+# F-Seg: Deep Feature Factorization for Image Segmentation
 
-DFF-Seg is a Python library that implements Deep Feature Factorization (DFF) for image segmentation tasks. This method leverages the power of deep neural networks and non-negative matrix factorization to produce meaningful segmentations of images.
+F-Seg is a Python library that implements Deep Feature Factorization (DFF) for image segmentation tasks. This method leverages the power of deep neural networks and non-negative matrix factorization to produce meaningful segmentations of images.
 
 ## Installation
 
-To install DFF-Seg, you can use pip:
+To install F-Seg, you can use pip:
 
 ```bash
-pip install -e .
+pip install fseg
 ```
 
 ## Usage
 
-To use DFF-Seg in your project, follow these steps:
+To use F-Seg in your project, follow these steps:
 
 1. Import the library:
 
 ```python
-from dff_seg import DFFSeg
+from fseg import FSeg
 ```
 
 2. Load a pre-trained model and prepare the input image:
