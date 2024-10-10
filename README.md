@@ -58,7 +58,7 @@ model = timm.create_model(
 target_layer = model.blocks[-1]    
 transform = TransformerReshapeTransform()
 
-unsupervised_seg = DFFSeg(
+unsupervised_seg = FSeg(
     model=model,
     target_layer=target_layer,
     reshape_transform=reshape_transform
