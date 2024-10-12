@@ -8,58 +8,8 @@ from PIL import Image
 from sklearn.metrics.pairwise import cosine_distances
 
 """
-This module implements Deep Feature Factorization (DFF) for image segmentation.
-
-It provides functions for performing DFF on activation maps, visualizing
-segmentation results, and utility functions for processing and displaying
-the output.
+Segmentation by Factorization: Unsupervised Semantic Segmentation for Pathology by Factorizing Foundation Model Features
 """
-
-
-def show_segmentation_on_image(
-        img: np.uint8,
-        segmentation: np.ndarray,
-        colors: list[np.ndarray] = None,
-        n_categories: int = None,
-        image_weight: float = 0.5
-) -> np.ndarray:
-    """Color code the different component heatmaps on top of the image.
-
-    Since different factorization component heatmaps can overlap in principle,
-    we need a strategy to decide how to deal with the overlaps.
-    This keeps the component that has a higher value in its heatmap.
-
-    :param img: The base image in RGB format.
-    :param segmentation: A numpy array with category indices per pixel.
-    :param colors: List of R, G, B colors to be used for the components.
-                   If None, will use the gist_rainbow colormap as a default.
-    :param n_categories: Number of categories in the segmentation.
-    :param image_weight: The final result is image_weight * img + (1-image_weight) * visualization.
-    :return: The visualized image.
-
-    """
-    float_img = np.float32(img) / 255
-    categories = list(range(n_categories))
-    if colors is None:
-        # taken from https://github.com/edocollins/DFF/blob/master/utils.py
-        _cmap = plt.cm.get_cmap('gist_rainbow')
-        colors = [
-            np.array(
-                _cmap(i)) for i in np.arange(
-                0,
-                1,
-                1.0 /
-                len(categories))]
-
-    mask = np.zeros(shape=(img.shape[0], img.shape[1], 3))
-    for category in categories:
-        mask[segmentation == category] = colors[category][:3]
-
-    result = float_img * image_weight + mask * (1 - image_weight)
-    result = np.uint8(result * 255)
-
-    return result
-
 
 def dff(activations: np.ndarray, n_components: int = 5):
     """Compute Deep Feature Factorization on a 2d Activations tensor.
@@ -103,7 +53,8 @@ class ConceptClustering:
 
 class FSeg:
     """
-    A class to perform Deep Feature Factorization (DFF) based segmentation on images.
+    Segmentation by Factorization:
+    Unsupervised Semantic Segmentation for Pathology by Factorizing Foundation Model Features
 
     :param model: The model to be used for generating activations.
     :param target_layer: The layer of the model from which activations are extracted.
@@ -300,13 +251,11 @@ class FSeg:
             reshaped_activations.shape[0], -1).transpose()
         try:
             _ = self.nmf_model
-            print("re-using model")
         except BaseException:
             self.nmf_model = MiniBatchNMF(
                 n_components=self.n_concepts,
                 init='random',
                 random_state=self.random_state)
-            print("init mininbatch model")
 
         self.nmf_model.partial_fit(reshaped_activations)
         self.concepts = self.nmf_model.components_
