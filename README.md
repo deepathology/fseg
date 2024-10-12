@@ -3,8 +3,7 @@
 This is a python library that utilizes pathology foundational models for unsupervised semantic segmentation.
 See our paper [here](https://arxiv.org/abs/2409.05697).
 
-This lets you generate unsupervised semantic segmentations for pathology H\&E images, into a configurable number of semantic classes.
-
+This lets you generate unsupervised semantic segmentation for pathology H\&E images, with a configurable number of semantic classes.
 
 F-Seg does this by performing Non-negative Matrix Factorization (NMF) on the model's activations, to create a segmentation mask corresponding to a set of pre-defined feature representations.
 
@@ -17,6 +16,8 @@ You need two things to run F-Seg:
 This can be done by extracting embeddings from the model, and then clustering them.
 
 The example below uses the [UNI model](https://huggingface.co/MahmoodLab/uni).
+We prepared cluster centers of two popular foundational models, the UNI and the Prov-GigaPath models, for different number of clusters k.
+
 See the notebook for more advanced usage.
 
 
@@ -24,7 +25,7 @@ See the notebook for more advanced usage.
 pip install fseg
 ```
 
-## Usage example
+## Minimal usage example for unsupervised semantic segmentation for H&E images using the UNI model
 
 ```python
 from fseg import FSeg
