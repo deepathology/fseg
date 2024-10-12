@@ -1,13 +1,19 @@
 # Segmentation by Factorization: Unsupervised Semantic Segmentation for Pathology by Factorizing Foundation Model Features
 
+🔥 Utilize pathology foundational models for unsupervised semantic segmentation.
+🔥 No need for any annotated data!
+🔥 Generates powerful H\&E image segmentation, for a configurable number of semantic classes.
+🔥 See our paper [here](https://arxiv.org/abs/2409.05697).
+
+![F-Seg results](./images/example.jpg)
+
+
 This is a python library that utilizes pathology foundational models for unsupervised semantic segmentation.
-See our paper [here](https://arxiv.org/abs/2409.05697).
 
 This lets you generate unsupervised semantic segmentation for pathology H\&E images, with a configurable number of semantic classes.
 
 F-Seg does this by performing Non-negative Matrix Factorization (NMF) on the model's activations, to create a segmentation mask corresponding to a set of pre-defined feature representations.
 
-![F-Seg results](./images/example.jpg)
 
 
 You need two things to run F-Seg:
