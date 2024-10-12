@@ -1,13 +1,13 @@
 # Segmentation by Factorization: Unsupervised Semantic Segmentation for Pathology by Factorizing Foundation Model Features
 
 
-🔥 Utilize pathology foundational models for unsupervised semantic segmentation.
+🧠 Utilize pathology foundational models for unsupervised semantic segmentation.
 
-🔥 No need for any annotated data!
+🏷️ No need for any annotated data!
 
-🔥 Generates powerful H\&E image segmentation, for a configurable number of semantic classes.
+🚀 Generates powerful H\&E image segmentation, for a configurable number of semantic classes.
 
-🔥 See our paper [here](https://arxiv.org/abs/2409.05697).
+📄 See our paper [here](https://arxiv.org/abs/2409.05697).
 
 ![F-Seg results](./images/example.jpg)
 
