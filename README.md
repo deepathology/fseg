@@ -1,6 +1,6 @@
 # Segmentation by Factorization: Unsupervised Semantic Segmentation for Pathology by Factorizing Foundation Model Features
 
-Brought to you by ![DeePathology](https://avatars.githubusercontent.com/u/29862154?v=4)
+![DeePathology](https://avatars.githubusercontent.com/u/29862154?v=4)
 
 🧠 Utilize pathology foundational models for unsupervised semantic segmentation.
 
@@ -13,7 +13,7 @@ Brought to you by ![DeePathology](https://avatars.githubusercontent.com/u/298621
 ![F-Seg results](./images/example.jpg)
 
 
-This is a python library that utilizes pathology foundational models for unsupervised semantic segmentation.
+This is a python library from [DeePathology](deepathology.ai) that utilizes pathology foundational models for unsupervised semantic segmentation.
 
 This lets you generate unsupervised semantic segmentation for pathology H\&E images, with a configurable number of semantic classes.
 
