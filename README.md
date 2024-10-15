@@ -1,5 +1,6 @@
 # Segmentation by Factorization: Unsupervised Semantic Segmentation for Pathology by Factorizing Foundation Model Features
 
+Brought to you by ![DeePathology](https://avatars.githubusercontent.com/u/29862154?v=4)
 
 🧠 Utilize pathology foundational models for unsupervised semantic segmentation.
 
