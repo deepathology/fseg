@@ -7,16 +7,16 @@ with open("requirements.txt", "r") as f:
     requirements = f.readlines()
 
 setuptools.setup(
-    name='fseg',
+    name='segf',
     version='1.0.0',
     author='Ofir Hadar, Jacob Gildenblat',
     author_email='jacob.gildenblat@gmail.com',
-    description='Unsupervised segmentation with DFF',
+    description='Segmentation by Factorization',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://github.com/deepathology/dff_seg',
+    url='https://github.com/deepathology/fseg',
     project_urls={
-        'Bug Tracker': 'https://github.com/deepathology/dff_seg/issues',
+        'Bug Tracker': 'https://github.com/deepathology/fseg/issues',
     },
     classifiers=[
         'Programming Language :: Python :: 3',

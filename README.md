@@ -10,7 +10,7 @@
 
 📄 See our paper [here](https://arxiv.org/abs/2409.05697).
 
-![F-Seg results](./images/example.jpg)
+![F-Seg results](https://raw.githubusercontent.com/deepathology/fseg/refs/heads/main/images/example.jpg)
 
 
 This is a python library from [DeePathology](deepathology.ai) that utilizes pathology foundational models for unsupervised semantic segmentation.
