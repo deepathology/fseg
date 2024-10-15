@@ -1,6 +1,6 @@
-# Segmentation by Factorization: Unsupervised Semantic Segmentation for Pathology by Factorizing Foundation Model Features
-
 ![DeePathology](https://avatars.githubusercontent.com/u/29862154?v=4)
+
+# Unsupervised Semantic Segmentation for Pathology by Factorizing Foundation Model Features
 
 🧠 Utilize pathology foundational models for unsupervised semantic segmentation.
 
@@ -33,7 +33,7 @@ See the notebook for more advanced usage.
 
 
 ```bash
-pip install fseg
+pip install segf
 ```
 
 ## Minimal usage example for unsupervised semantic segmentation for H&E images using the UNI model
