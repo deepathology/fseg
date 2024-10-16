@@ -4,3 +4,7 @@ scikit-learn
 pillow
 matplotlib
 torch
+timm
+huggingface_hub
+joblib
+opencv-python
