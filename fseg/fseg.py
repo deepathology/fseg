@@ -1,6 +1,5 @@
 from typing import Callable
 import numpy as np
-import matplotlib.pyplot as plt
 from pytorch_grad_cam.activations_and_gradients import ActivationsAndGradients
 import torch
 from sklearn.decomposition import NMF, non_negative_factorization, MiniBatchNMF
@@ -10,6 +9,7 @@ from sklearn.metrics.pairwise import cosine_distances
 """
 Segmentation by Factorization: Unsupervised Semantic Segmentation for Pathology by Factorizing Foundation Model Features
 """
+
 
 def dff(activations: np.ndarray, n_components: int = 5):
     """Compute Deep Feature Factorization on a 2d Activations tensor.
@@ -89,15 +89,6 @@ class FSeg:
         """
         self.fit(input_tensor=input_tensor)
         return self.predict(input_tensor)
-
-    def get_activations(self, input_tensor: torch.tensor) -> np.ndarray:
-        with torch.no_grad():
-            self.activations_and_grads(input_tensor)
-            activations = self.activations_and_grads.activations[0].cpu(
-            ).numpy()
-
-        activations = activations[0].transpose((1, 2, 0))
-        return activations
 
     def predict_clustering(
             self,
@@ -206,6 +197,41 @@ class FSeg:
             Image.fromarray(
                 np.uint8(w_resized)))
         return segmentation
+
+    def predict_batch_project_concepts(
+            self,
+            input_tensor: torch.tensor,
+            concepts: np.ndarray) -> np.ndarray:
+        """
+        Predict the segmentation for the given input tensor with the given concepts.
+
+        :param input_tensor: The input tensor.
+        :param concepts: The concepts to use for the projection.
+        :return: The predicted segmentation as a numpy array.
+
+        """
+        concepts[concepts < 0] = 0
+        activations = self.get_activations(
+            input_tensor).transpose((0, 2, 3, 1))
+        vector = activations.reshape(-1, activations.shape[-1])
+        w, __, __ = non_negative_factorization(
+            X=vector,
+            H=concepts,
+            W=None,
+            n_components=len(concepts),
+            update_H=False,
+            random_state=self.random_state,
+            max_iter=10000,
+        )
+        ws = w.reshape(
+            (activations.shape[0], activations.shape[1], activations.shape[2], -1))
+
+        w_for_resize = torch.from_numpy(ws.transpose((0, 3, 1, 2)))
+        size = (input_tensor.shape[2], input_tensor.shape[3])
+        w_resized = torch.nn.functional.interpolate(
+            w_for_resize, size, mode='bilinear').numpy().transpose((0, 2, 3, 1))
+        batch_segmentation = w_resized.argmax(axis=-1)
+        return batch_segmentation
 
     def predict_on_single_image(
             self,
