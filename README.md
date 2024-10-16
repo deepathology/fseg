@@ -1,7 +1,5 @@
 ![DeePathology](https://avatars.githubusercontent.com/u/29862154?v=4)
 
-`pip install segf`
-
 # Unsupervised Semantic Segmentation for Pathology by Factorizing Foundation Model Features
 
 🧠 Utilize pathology foundational models for unsupervised semantic segmentation.
@@ -13,6 +11,8 @@
 📄 See our paper [here](https://arxiv.org/abs/2409.05697).
 
 ![F-Seg results](https://raw.githubusercontent.com/deepathology/fseg/refs/heads/main/images/example.jpg)
+
+`pip install segf`
 
 
 This is a python library from [DeePathology](deepathology.ai) that utilizes pathology foundational models for unsupervised semantic segmentation.
